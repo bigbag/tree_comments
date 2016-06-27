@@ -14,6 +14,7 @@ class UserModel(object):
         metadata,
         sa.Column('id', sa.BigInteger, primary_key=True),
         sa.Column('name', sa.String(100), nullable=False),
+        sa.Column('create_date', sa.TIMESTAMP, nullable=False),
     )
 
     async def check_name_unique(self, engine, user_name):
