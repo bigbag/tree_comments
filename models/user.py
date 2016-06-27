@@ -47,7 +47,7 @@ class UserModel(object):
             query = self.table.select(self.table.c.id == user_id)
             result = await(await conn.execute(query)).first()
             if result:
-                user = {'id': result.id, 'name': result.name}
+                return {'id': result.id, 'name': result.name}
 
         return user
 
@@ -61,11 +61,11 @@ class UserModel(object):
         async with engine.acquire() as conn:
             trans = await conn.begin()
             try:
-                result = await conn.execute(self.table.insert().
-                                            values(name=user_name))
+                data = {'name': user_name}
+                result = await conn.execute(self.table.insert().values(data))
             except Exception:
                 await trans.rollback()
-                return
+                return False
             else:
                 await trans.commit()
 
@@ -75,6 +75,14 @@ class UserModel(object):
         """Request to delete user by user_id"""
 
         async with engine.acquire() as conn:
-            query = self.table.delete().where(self.table.c.id == user_id)
-            result = await conn.execute(query)
+            trans = await conn.begin()
+            try:
+                query = self.table.delete(self.table.c.id == user_id)
+                result = await conn.execute(query)
+            except Exception:
+                await trans.rollback()
+                return False
+            else:
+                await trans.commit()
+
             return result.rowcount
