@@ -39,7 +39,7 @@ class UserView:
             content_type='application/json')
 
     async def create(self, request):
-        """Create a user with given name"""
+        """Create user with given name"""
 
         data = await request.post()
         user_name = data.get('name')

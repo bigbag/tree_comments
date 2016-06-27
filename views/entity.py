@@ -39,7 +39,7 @@ class EntityView:
             content_type='application/json')
 
     async def create(self, request):
-        """Create a entity with given name, type"""
+        """Create entity with given name, type"""
 
         data = await request.post()
         entity_name = data.get('name')
