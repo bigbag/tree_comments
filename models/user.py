@@ -58,7 +58,15 @@ class UserModel(object):
             return False
 
         async with engine.acquire() as conn:
-            result = await conn.execute(self.table.insert().values(name=user_name))
+            trans = await conn.begin()
+            try:
+                result = await conn.execute(self.table.insert().
+                                            values(name=user_name))
+            except Exception:
+                await trans.rollback()
+                return
+            else:
+                await trans.commit()
 
             return {'id': result.lastrowid, 'name': user_name}
 
