@@ -1,0 +1,9 @@
+*.sublime*
+*.pyc
+
+/settings_local.py
+
+/env/
+/logs/
+/migrations/sql/*
+*/__pycache__/
