@@ -47,13 +47,14 @@ class UserView:
             log.debug('Not found user name in request')
             raise web.HTTPBadRequest()
 
-        user = await UserModel().create(request.app['db'], user_name)
-        if not user:
+        user_id = await UserModel().create(request.app['db'], user_name)
+        if not user_id:
             log.debug('Not unique user name {}'.format(user_name))
             raise web.HTTPBadRequest()
 
+        url = request.app.router['user_details'].url(parts={'user_id': user_id})
         return web.HTTPCreated(
-            body=json.dumps(user).encode('utf-8'),
+            body=json.dumps({'url': url}).encode('utf-8'),
             content_type='application/json')
 
     async def delete(self, request):

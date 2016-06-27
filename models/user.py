@@ -51,7 +51,7 @@ class UserModel(object):
         return user
 
     async def create(self, engine, user_name):
-        """Request to create a user"""
+        """Request to create user"""
 
         is_valid = await self.check_name_unique(engine, user_name)
         if not is_valid:
@@ -68,7 +68,7 @@ class UserModel(object):
             else:
                 await trans.commit()
 
-            return {'id': result.lastrowid, 'name': user_name}
+            return result.lastrowid
 
     async def delete(self, engine, user_id):
         """Request to delete user by user_id"""
