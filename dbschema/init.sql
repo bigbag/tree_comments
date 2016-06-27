@@ -19,7 +19,7 @@ CREATE TABLE `comments` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `parent_id` bigint(19) DEFAULT NULL,
   `level` int(11) NOT NULL,
-  `patch` varchar(256) NOT NULL,
+  `path` varchar(256) NOT NULL,
   `has_children` tinyint(1) NOT NULL DEFAULT '0',
   `user_id` bigint(20) NOT NULL,
   `entity_id` bigint(20) NOT NULL,
