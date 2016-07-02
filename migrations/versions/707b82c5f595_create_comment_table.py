@@ -20,13 +20,12 @@ def upgrade():
     op.create_table(
         'comment',
         sa.Column('id', sa.BigInteger(), nullable=False),
-        sa.Column('parent_id', sa.BigInteger, nullable=True),
+        sa.Column('parent_id', sa.BigInteger, index=True, nullable=True),
         sa.Column('path', sa.String(200), nullable=False, index=True),
         sa.Column('depth', sa.BigInteger(), nullable=False),
         sa.Column('has_children', sa.Boolean(False), nullable=False),
         sa.Column('entity_id', sa.BigInteger(), nullable=False, index=True),
-        sa.Column('comment_id', sa.BigInteger(), nullable=False),
-        sa.Column('text', sa.String(length=512), nullable=False),
+        sa.Column('text', sa.String(512), nullable=False),
         sa.Column('user_id', sa.BigInteger(), index=True, nullable=False),
         sa.Column('create_date', sa.Integer(), nullable=False),
         sa.Column('update_date', sa.Integer(), nullable=False),
@@ -38,12 +37,6 @@ def upgrade():
         'comment', 'user',
         ['user_id'], ['id'],
     )
-
-    op.create_foreign_key(
-        'fk_comment_tree_parent_id',
-        'comment', 'comment',
-        ['parent_id'], ['id'],
-        ondelete='CASCADE')
 
     op.create_foreign_key(
         'fk_comment_tree_entity',
