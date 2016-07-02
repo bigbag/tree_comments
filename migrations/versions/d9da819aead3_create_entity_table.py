@@ -24,7 +24,7 @@ def upgrade():
         sa.Column('type', sa.String(100), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
-    op.create_unique_constraint("unique_name_type", "entity", ["name", "type"])
+    op.create_unique_constraint('unique_name_type', 'entity', ['name', 'type'])
 
 
 def downgrade():
