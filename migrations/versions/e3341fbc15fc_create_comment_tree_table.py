@@ -21,18 +21,13 @@ def upgrade():
         'comment_tree',
         sa.Column('id', sa.BigInteger(), nullable=False),
         sa.Column('parent_id', sa.BigInteger, nullable=True),
-        sa.Column('lft', sa.BigInteger(), nullable=False),
-        sa.Column('rgt', sa.BigInteger(), nullable=False),
+        sa.Column('path', sa.String(200), nullable=False, index=True),
         sa.Column('depth', sa.BigInteger(), nullable=False),
         sa.Column('has_children', sa.Boolean(False), nullable=False),
-        sa.Column('entity_id', sa.BigInteger(), nullable=False),
+        sa.Column('entity_id', sa.BigInteger(), nullable=False, index=True),
         sa.Column('comment_id', sa.BigInteger(), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
-
-    op.create_index('key_entity_id_lft_rgt', 'comment_tree', ['entity_id', 'lft', 'rgt'])
-    op.create_index('key_entity_id_rgt', 'comment_tree', ['entity_id', 'rgt'])
-
     op.create_index('key_has_children', 'comment_tree', ['has_children'])
 
     op.create_foreign_key(
