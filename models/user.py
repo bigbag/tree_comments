@@ -28,13 +28,19 @@ class UserModel(object):
 
         return is_valid
 
+    def _format_user(self, user):
+        return {
+            'id': user.id,
+            'name': user.name,
+        }
+
     async def get_all(self, engine):
         """Request information about all users"""
 
         users = []
         async with engine.acquire() as conn:
             async for row in conn.execute(self.table.select()):
-                users.append({'id': row.id, 'name': row.name})
+                users.append(self._format_user(row))
 
         return users
 
@@ -46,7 +52,7 @@ class UserModel(object):
             query = self.table.select(self.table.c.id == user_id)
             result = await(await conn.execute(query)).first()
             if result:
-                return {'id': result.id, 'name': result.name}
+                return self._format_user(result)
 
         return user
 

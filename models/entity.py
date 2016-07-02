@@ -35,19 +35,20 @@ class EntityModel(object):
 
         return is_valid
 
+    def _format_entity(self, entity):
+        return {
+            'id': entity.id,
+            'name': entity.name,
+            'type': entity.type
+        }
+
     async def get_all(self, engine):
         """Request information about all entities"""
 
         entities = []
         async with engine.acquire() as conn:
             async for row in conn.execute(self.table.select()):
-                entities.append(
-                    {
-                        'id': row.id,
-                        'name': row.name,
-                        'type': row.type
-                    }
-                )
+                entities.append(self._format_entity(row))
 
         return entities
 
@@ -59,11 +60,7 @@ class EntityModel(object):
             query = self.table.select(self.table.c.id == entity_id)
             result = await(await conn.execute(query)).first()
             if result:
-                return {
-                    'id': result.id,
-                    'name': result.name,
-                    'type': result.type
-                }
+                return self._format_entity(result)
 
         return entity
 
