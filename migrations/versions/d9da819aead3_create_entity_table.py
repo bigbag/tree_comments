@@ -22,7 +22,6 @@ def upgrade():
         sa.Column('id', sa.BigInteger, primary_key=True),
         sa.Column('name', sa.String(100), nullable=False),
         sa.Column('type', sa.String(100), nullable=False),
-        sa.Column('create_date', sa.TIMESTAMP, nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
 
