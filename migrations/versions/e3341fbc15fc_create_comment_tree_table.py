@@ -20,6 +20,7 @@ def upgrade():
     op.create_table(
         'comment_tree',
         sa.Column('id', sa.BigInteger(), nullable=False),
+        sa.Column('parent_id', sa.BigInteger, nullable=True),
         sa.Column('lft', sa.BigInteger(), nullable=False),
         sa.Column('rgt', sa.BigInteger(), nullable=False),
         sa.Column('depth', sa.BigInteger(), nullable=False),
@@ -33,6 +34,12 @@ def upgrade():
     op.create_index('key_entity_id_rgt', 'comment_tree', ['entity_id', 'rgt'])
 
     op.create_index('key_has_children', 'comment_tree', ['has_children'])
+
+    op.create_foreign_key(
+        'fk_comment_tree_parent_id',
+        'comment_tree', 'comment_tree',
+        ['parent_id'], ['id'],
+        ondelete='CASCADE')
 
     op.create_foreign_key(
         'fk_comment_tree_comment',
