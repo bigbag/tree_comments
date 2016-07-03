@@ -19,19 +19,19 @@ import sqlalchemy as sa
 def upgrade():
     op.create_table(
         'comment_tree',
-        sa.Column('id_ancestor', sa.Integer(), nullable=False),
-        sa.Column('id_descendant', sa.Integer(), nullable=False),
-        sa.Column('id_nearest_ancestor', sa.Integer(), nullable=False),
+        sa.Column('ancestor_id', sa.Integer(), nullable=False),
+        sa.Column('descendant_id', sa.Integer(), nullable=False),
+        sa.Column('nearest_ancestor_id', sa.Integer(), nullable=False),
         sa.Column('level', sa.Integer(), nullable=False),
         sa.Column('has_children', sa.Boolean(False), nullable=False),
         sa.Column('entity_id', sa.Integer(), nullable=False),
-        sa.PrimaryKeyConstraint('id_ancestor', 'id_descendant')
+        sa.PrimaryKeyConstraint('ancestor_id', 'descendant_id')
     )
 
-    op.create_index('key_comment_treet_id_descendant', 'comment_tree', ['id_descendant'])
+    op.create_index('key_comment_treet_descendant_id', 'comment_tree', ['descendant_id'])
     op.create_index('key_comment_treet_has_children', 'comment_tree', ['has_children'])
-    op.create_index('key_comment_treet_id_nearest_ancestor', 'comment_tree', ['id_nearest_ancestor'])
-    op.create_index('key_comment_treet_main', 'comment_tree', ['id_ancestor', 'id_descendant', 'id_nearest_ancestor', 'level'])
+    op.create_index('key_comment_treet_nearest_ancestor_id', 'comment_tree', ['nearest_ancestor_id'])
+    op.create_index('key_comment_treet_main', 'comment_tree', ['ancestor_id', 'descendant_id', 'nearest_ancestor_id', 'level'])
 
     op.create_foreign_key(
         'fk_comment_tree_entity',
@@ -44,7 +44,7 @@ def upgrade():
     op.create_foreign_key(
         'fk_comment_tree_comment_parent',
         'comment_tree', 'comment',
-        ['id_ancestor'], ['id_entry'],
+        ['ancestor_id'], ['comment_id'],
         onupdate='CASCADE',
         ondelete='CASCADE'
     )
@@ -52,7 +52,7 @@ def upgrade():
     op.create_foreign_key(
         'fk_comment_tree_comment_child',
         'comment_tree', 'comment',
-        ['id_descendant'], ['id_entry'],
+        ['descendant_id'], ['comment_id'],
         onupdate='CASCADE',
         ondelete='CASCADE'
     )

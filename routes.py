@@ -22,5 +22,6 @@ routes = [
     ('GET', '/comment/', comment_view.get_all, 'comment_list'),
     ('GET', '/comment/{comment_id}', comment_view.get, 'comment_details'),
     ('POST', '/comment/', comment_view.create, 'comment_create'),
+    ('PUT', '/comment/{comment_id}', comment_view.update, 'comment_update'),
     ('DELETE', '/comment/{comment_id}', comment_view.delete, 'comment_delete'),
 ]
