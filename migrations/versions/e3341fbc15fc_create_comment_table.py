@@ -19,12 +19,12 @@ import sqlalchemy as sa
 def upgrade():
     op.create_table(
         'comment',
-        sa.Column('id_comment', sa.Integer(), nullable=False),
+        sa.Column('id_entry', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('text', sa.Text, nullable=False),
         sa.Column('date_create', sa.TIMESTAMP(), nullable=True),
         sa.Column('date_update', sa.TIMESTAMP(), nullable=True),
-        sa.PrimaryKeyConstraint('id_comment')
+        sa.PrimaryKeyConstraint('id_entry')
     )
 
     op.create_index('key_comment_user_id', 'comment', ['user_id'])
