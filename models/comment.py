@@ -1,99 +1,188 @@
 """Class with comment data model"""
 
+import logging as log
 import sqlalchemy as sa
 
 
 class CommentModel(object):
 
-    __name__ = 'comments'
+    __name__ = 'comment'
 
     metadata = sa.MetaData()
 
     RECORD_ON_PAGE = 50
 
     table = sa.Table(
-        'comments',
+        'comment',
         metadata,
-        sa.Column('id', sa.BigInteger, primary_key=True),
-        sa.Column('parent_id', sa.BigInteger, nullable=True),
-        sa.Column('level', sa.Integer, nullable=False),
-        sa.Column('path', sa.String(256), nullable=False),
-        sa.Column('has_children', sa.Boolean(False), nullable=False),
-        sa.Column('user_id', sa.BigInteger, nullable=False),
-        sa.Column('entity_id', sa.BigInteger, nullable=False),
+        sa.Column('comment_id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), sa.ForeignKey("user.id"), nullable=False),
         sa.Column('text', sa.Text, nullable=False),
-        sa.Column('create_date', sa.TIMESTAMP, nullable=False),
-        sa.Column('update_date', sa.TIMESTAMP, nullable=False),
+        sa.Column('date_create', sa.TIMESTAMP(), default=sa.func.now()),
+        sa.Column('date_update', sa.TIMESTAMP(), onupdate=sa.func.utc_timestamp()),
     )
 
-    async def get_all(self, engine, entity_id, page):
-        """Request information about comments"""
+    @staticmethod
+    def format_comment(comment):
+        return {
+            'id': comment.id,
+            'user_id': comment.user_id,
+            'create_date': comment.create_date,
+            'text': comment.text,
+        }
 
-        comments = []
-        page = page if page > 0 else 1
-        query = self.table.select().\
-            where(self.table.c.entity_id == entity_id).\
-            where(self.table.c.level == 1).\
-            where(self.table.c.id > (page - 1) * self.RECORD_ON_PAGE).\
-            limit(self.RECORD_ON_PAGE).\
-            order_by('create_date')
+    async def get(self, engine, comment_id):
+        """Request information about comment by comment_id"""
 
         async with engine.acquire() as conn:
-            async for row in conn.execute(query):
-                comments.append(
-                    {
-                        'id': row.id,
-                        'user_id': row.user_id,
-                        'create_date': row.create_datetime.isoformat(),
-                        'text': row.text,
-                    }
-                )
+            query = self.table.select(self.table.c.comment_id == comment_id)
+            return await(await conn.execute(query)).first()
 
-        return comments
-
-    async def create(self, engine, user_id, entity_id, text, parent_id=None):
+    async def create(self, engine, user_id, text):
         """Request to create comment"""
 
+        result = None
         async with engine.acquire() as conn:
-            data = {
-                'level': 1,
-                'user_id': user_id,
-                'entity_id': entity_id,
-                'has_children': False,
-                'text': text,
-            }
-            if parent_id:
-                query = self.table.select(self.table.c.id == parent_id)
-                parent_comment = await(await conn.execute(query)).first()
-                if parent_comment:
-                    path = parent_comment.id if not parent_comment.path else \
-                        '{}.{}'.format(parent_comment.path, parent_comment.id)
-
-                    data.update(
-                        {
-                            'parent_id': parent_comment.id,
-                            'level': parent_comment.level + 1,
-                            'path': path,
-                        }
-                    )
-
             trans = await conn.begin()
             try:
-                result = await conn.execute(self.table.insert().values(data))
-                query = self.table.update(self.table.c.id == parent_id).\
-                    values(has_children=True)
-                await conn.execute(query)
-            except Exception:
+                result = await conn.execute(self.table.insert().values(
+                    {'user_id': user_id, 'text': text}
+                ))
+            except Exception as e:
                 await trans.rollback()
-                return False
+                log.debug('Error on create comment: {}'.format(e))
+                return
             else:
                 await trans.commit()
 
+        if result:
             return result.lastrowid
 
-    async def delete(self, engine, comment_id):
+    async def update(self, engine, comment_id, text):
+        """Request to create comment"""
+
+        result = None
         async with engine.acquire() as conn:
-            query = self.table.delete().where(self.table.c.id == comment_id).\
-                where(self.table.c.has_children.is_(False))
-            result = await conn.execute(query)
+            trans = await conn.begin()
+            try:
+                query = self.table.update().\
+                    where(self.table.c.comment_id == comment_id).\
+                    values({'text': text})
+                result = await conn.execute(query)
+            except Exception as e:
+                await trans.rollback()
+                log.debug('Error on create comment: {}'.format(e))
+                return
+            else:
+                await trans.commit()
+
+        if result:
             return result.rowcount
+
+    async def delete(self, engine, comment_id):
+        """Request to delete comment by comment_id"""
+
+        async with engine.acquire() as conn:
+            trans = await conn.begin()
+            try:
+                query = self.table.delete(self.table.c.id == comment_id)
+                result = await conn.execute(query)
+            except Exception as e:
+                log.debug('Error on delete comment: {}'.format(e))
+                await trans.rollback()
+                return
+            else:
+                await trans.commit()
+
+            return result.rowcount
+
+
+class CommentTreeModel(object):
+
+    __name__ = 'comment_tree'
+
+    metadata = sa.MetaData()
+
+    RECORD_ON_PAGE = 50
+
+    table = sa.Table(
+        'comment_tree',
+        metadata,
+        sa.Column('ancestor_id', sa.Integer(), sa.ForeignKey("comment.comment_id"), nullable=False),
+        sa.Column('descendant_id', sa.Integer(), sa.ForeignKey("comment.comment_id"), nullable=False),
+        sa.Column('nearest_ancestor_id', sa.Integer(), nullable=False),
+        sa.Column('level', sa.Integer(), nullable=False),
+        sa.Column('entity_id', sa.Integer(), sa.ForeignKey("entity.id"), nullable=False),
+    )
+
+    async def delete(self, engine, comment_id):
+        """Request to delete comment_tree and comment by comment_id"""
+
+        result = None
+        async with engine.acquire() as conn:
+            trans = await conn.begin()
+            try:
+                query = self.table.delete().\
+                    where(self.table.c.descendant_id == comment_id)
+                if await conn.execute(query):
+                    query = self.table.delete().\
+                        where(CommentModel.table.c.comment_id == comment_id)
+                    result = await conn.execute(query)
+            except Exception as e:
+                await trans.rollback()
+                log.debug('Error on delete comment: {}'.format(e))
+                return
+            else:
+                await trans.commit()
+
+        if result:
+            return result.rowcount
+
+    async def get_level(self, engine, comment_id):
+        level = 0
+        async with engine.acquire() as conn:
+            query = self.table.select(self.table.c.level).\
+                where(self.table.c.ancestor_id == self.table.c.descendant_id).\
+                where(self.table.c.descendant_id == comment_id)
+            result = await(await conn.execute(query)).first()
+            if result:
+                level = result.level
+
+        return level
+
+    async def create(self, engine, user_id, entity_id, text, descendant_id=None):
+        """Request to create comment"""
+
+        result = None
+        async with engine.acquire() as conn:
+            trans = await conn.begin()
+            try:
+                comment = await conn.execute(CommentModel.table.insert().values(
+                    {'user_id': user_id, 'text': text}
+                ))
+                if not comment:
+                    return
+
+                level = await self.get_level(engine, descendant_id) + 1 if descendant_id else 0
+                data = {
+                    'comment_id': comment.lastrowid,
+                    'descendant_id': descendant_id if descendant_id else 0,
+                    'entity_id': entity_id,
+                    'level': level
+                }
+
+                query = '''INSERT INTO comment_tree (ancestor_id, descendant_id, nearest_ancestor_id, entity_id, level)
+                            SELECT ancestor_id, {comment_id}, {descendant_id}, {entity_id}, {level}
+                                FROM comment_tree
+                                WHERE descendant_id = {descendant_id}
+                           UNION ALL SELECT {comment_id}, {comment_id}, {descendant_id}, {entity_id}, {level}'''
+                result = await conn.execute(query.format(**data))
+            except Exception as e:
+                await trans.rollback()
+                log.debug('Error on create comment_tree: {}'.format(e))
+                return
+            else:
+                await trans.commit()
+
+        if result:
+            return result.lastrowid
