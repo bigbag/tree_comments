@@ -12,7 +12,7 @@ class UserModel(object):
     table = sa.Table(
         'user',
         metadata,
-        sa.Column('id', sa.BigInteger, primary_key=True),
+        sa.Column('id', sa.Integer, primary_key=True),
         sa.Column('name', sa.String(100), unique=True, nullable=False),
     )
 

@@ -16,7 +16,7 @@ class EntityModel(object):
     table = sa.Table(
         'entity',
         metadata,
-        sa.Column('id', sa.BigInteger, primary_key=True),
+        sa.Column('id', sa.Integer, primary_key=True),
         sa.Column('name', sa.String(100), nullable=False),
         sa.Column('type', sa.String(100), nullable=False),
     )
