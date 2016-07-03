@@ -13,7 +13,7 @@ class EntityView:
     def __init__(self):
         pass
 
-    async def list(self, request):
+    async def get_all(self, request):
         """Returns information about all entities"""
 
         entities = await EntityModel().get_all(request.app['db'])

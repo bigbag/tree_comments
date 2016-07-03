@@ -13,7 +13,7 @@ class UserView:
     def __init__(self):
         pass
 
-    async def list(self, request):
+    async def get_all(self, request):
         """Returns information about all users"""
 
         users = await UserModel().get_all(request.app['db'])
