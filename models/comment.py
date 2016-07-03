@@ -120,6 +120,27 @@ class CommentTreeModel(object):
         sa.Column('entity_id', sa.Integer(), sa.ForeignKey("entity.id"), nullable=False),
     )
 
+    async def get_all(self, engine, entity_id, page):
+        """Request information about comments first level"""
+
+        comments = []
+        page = page if page > 0 else 1
+        offset = (page - 1) * self.RECORD_ON_PAGE
+
+        j = sa.join(self.table, CommentModel.table,
+                    self.table.c.ancestor_id == CommentModel.table.c.comment_id)
+        query = sa.select([CommentModel.table]).select_from(j).\
+            where(self.table.c.entity_id == entity_id).\
+            where(self.table.c.level == 0).\
+            offset(offset).\
+            limit(self.RECORD_ON_PAGE)
+
+        async with engine.acquire() as conn:
+            async for row in conn.execute(query):
+                comments.append(CommentModel.format_comment(row))
+
+        return comments
+
     async def get_once(self, engine, comment_id):
         """Request for getting information about comment_tree for once comment"""
 

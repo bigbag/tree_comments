@@ -53,13 +53,6 @@ class CommentView:
             body=json.dumps(CommentModel.format_comment(comment)).encode('utf-8'),
             content_type='application/json')
 
-    @staticmethod
-    def _get_ancestor_id(data):
-        try:
-            return int(data.get('ancestor_id'))
-        except (TypeError, ValueError):
-            return
-
     async def _create_request_validation(self, request):
         """Checking data to create comment"""
 
@@ -86,10 +79,16 @@ class CommentView:
             log.debug('CREATE: Not found user_id {}'.format(user_id))
             raise web.HTTPBadRequest()
 
+        ancestor_id = None
+        try:
+            ancestor_id = int(data.get('ancestor_id'))
+        except (TypeError, ValueError):
+            pass
+
         return {
             'entity_id': entity_id,
             'user_id': user_id,
-            'ancestor_id': self._get_ancestor_id(data),
+            'ancestor_id': ancestor_id,
             'text': text
         }
 
