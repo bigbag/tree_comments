@@ -19,7 +19,7 @@ import sqlalchemy as sa
 def upgrade():
     op.create_table(
         'entity',
-        sa.Column('id', sa.BigInteger, primary_key=True),
+        sa.Column('id', sa.Integer, primary_key=True),
         sa.Column('name', sa.String(100), nullable=False),
         sa.Column('type', sa.String(100), nullable=False),
         sa.PrimaryKeyConstraint('id')

@@ -1,16 +1,17 @@
 """Added start fixtures
 
-Revision ID: e3341fbc15fc
-Revises: 707b82c5f595
-Create Date: 2016-07-02 13:23:47.753380
+Revision ID: 707b82c5f595
+Revises: d9da819aead3
+Create Date: 2016-07-02 13:18:10.089362
 
 """
 
 # revision identifiers, used by Alembic.
-revision = 'e3341fbc15fc'
-down_revision = '707b82c5f595'
+revision = '707b82c5f595'
+down_revision = 'd9da819aead3'
 branch_labels = None
 depends_on = None
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.sql import table
