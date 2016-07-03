@@ -1,5 +1,6 @@
 """Class with user data model"""
 
+import logging as log
 import sqlalchemy as sa
 
 
@@ -68,9 +69,10 @@ class UserModel(object):
             try:
                 data = {'name': user_name}
                 result = await conn.execute(self.table.insert().values(data))
-            except Exception:
+            except Exception as e:
                 await trans.rollback()
-                return False
+                log.debug('Error on create user: {}'.format(e))
+                return
             else:
                 await trans.commit()
 
@@ -84,9 +86,10 @@ class UserModel(object):
             try:
                 query = self.table.delete(self.table.c.id == user_id)
                 result = await conn.execute(query)
-            except Exception:
+            except Exception as e:
                 await trans.rollback()
-                return False
+                log.debug('Error on delete user: {}'.format(e))
+                return
             else:
                 await trans.commit()
 

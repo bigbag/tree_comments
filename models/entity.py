@@ -1,5 +1,6 @@
 """Class with entity data model"""
 
+import logging as log
 import sqlalchemy as sa
 
 
@@ -76,9 +77,10 @@ class EntityModel(object):
             try:
                 data = {'name': entity_name, 'type': entity_type}
                 result = await conn.execute(self.table.insert().values(data))
-            except Exception:
+            except Exception as e:
                 await trans.rollback()
-                return False
+                log.debug('Error on create entity: {}'.format(e))
+                return
             else:
                 await trans.commit()
 
@@ -92,9 +94,10 @@ class EntityModel(object):
             try:
                 query = self.table.delete(self.table.c.id == entity_id)
                 result = await conn.execute(query)
-            except Exception:
+            except Exception as e:
                 await trans.rollback()
-                return False
+                log.debug('Error on delete entity: {}'.format(e))
+                return
             else:
                 await trans.commit()
 
