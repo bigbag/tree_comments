@@ -23,11 +23,16 @@ class CommentModel(object):
     )
 
     @staticmethod
+    def format_date(date):
+        return '' if not date else date.isoformat()
+
+    @staticmethod
     def format_comment(comment):
         return {
-            'id': comment.id,
+            'comment_id': comment.comment_id,
             'user_id': comment.user_id,
-            'create_date': comment.create_date,
+            'date_create': CommentModel.format_date(comment.date_create),
+            'date_update': CommentModel.format_date(comment.date_update),
             'text': comment.text,
         }
 
@@ -115,6 +120,71 @@ class CommentTreeModel(object):
         sa.Column('entity_id', sa.Integer(), sa.ForeignKey("entity.id"), nullable=False),
     )
 
+    async def get_once(self, engine, comment_id):
+        """Request for getting information about comment_tree for once comment"""
+
+        async with engine.acquire() as conn:
+            query = self.table.select().\
+                where(self.table.c.ancestor_id == self.table.c.descendant_id).\
+                where(self.table.c.ancestor_id == comment_id)
+            return await(await conn.execute(query)).first()
+
+    async def has_descendant(self, engine, comment_id):
+        """Request to check for descendants"""
+
+        async with engine.acquire() as conn:
+            query = self.table.select().\
+                where(self.table.c.ancestor_id != self.table.c.descendant_id).\
+                where(self.table.c.ancestor_id == comment_id)
+            return await(await conn.execute(query)).first()
+
+    async def create(self, engine, user_id, entity_id, text, ancestor_id=None):
+        """Request to create comment"""
+
+        result = None
+        ancestor = None
+        if ancestor_id:
+            ancestor = await self.get_once(engine, ancestor_id)
+            if not ancestor:
+                log.debug('Not found ancestor for id: {}'.format(ancestor_id))
+                return result
+
+            if ancestor.entity_id != entity_id:
+                log.debug('Not equal request entity_id and ancestor entity_id')
+                return result
+
+        async with engine.acquire() as conn:
+            trans = await conn.begin()
+            try:
+                new_comment = await conn.execute(CommentModel.table.insert().values(
+                    {'user_id': user_id, 'text': text}
+                ))
+                if not new_comment:
+                    return
+
+                data = {
+                    'new_comment_id': new_comment.lastrowid,
+                    'ancestor_id': ancestor_id if ancestor_id else 0,
+                    'entity_id': entity_id,
+                    'level': 0 if not ancestor else ancestor.level + 1
+                }
+
+                query = '''INSERT INTO comment_tree (ancestor_id, descendant_id, nearest_ancestor_id, entity_id, level)
+                            SELECT ancestor_id, {new_comment_id}, {ancestor_id}, {entity_id}, {level}
+                                FROM comment_tree
+                                WHERE descendant_id = {ancestor_id}
+                           UNION ALL SELECT {new_comment_id}, {new_comment_id}, {ancestor_id}, {entity_id}, {level}'''
+                result = await conn.execute(query.format(**data))
+            except Exception as e:
+                await trans.rollback()
+                log.debug('Error on create comment_tree: {}'.format(e))
+                return
+            else:
+                await trans.commit()
+
+        if result:
+            return result.lastrowid
+
     async def delete(self, engine, comment_id):
         """Request to delete comment_tree and comment by comment_id"""
 
@@ -125,7 +195,7 @@ class CommentTreeModel(object):
                 query = self.table.delete().\
                     where(self.table.c.descendant_id == comment_id)
                 if await conn.execute(query):
-                    query = self.table.delete().\
+                    query = CommentModel.table.delete().\
                         where(CommentModel.table.c.comment_id == comment_id)
                     result = await conn.execute(query)
             except Exception as e:
@@ -137,52 +207,3 @@ class CommentTreeModel(object):
 
         if result:
             return result.rowcount
-
-    async def get_level(self, engine, comment_id):
-        level = 0
-        async with engine.acquire() as conn:
-            query = self.table.select(self.table.c.level).\
-                where(self.table.c.ancestor_id == self.table.c.descendant_id).\
-                where(self.table.c.descendant_id == comment_id)
-            result = await(await conn.execute(query)).first()
-            if result:
-                level = result.level
-
-        return level
-
-    async def create(self, engine, user_id, entity_id, text, descendant_id=None):
-        """Request to create comment"""
-
-        result = None
-        async with engine.acquire() as conn:
-            trans = await conn.begin()
-            try:
-                comment = await conn.execute(CommentModel.table.insert().values(
-                    {'user_id': user_id, 'text': text}
-                ))
-                if not comment:
-                    return
-
-                level = await self.get_level(engine, descendant_id) + 1 if descendant_id else 0
-                data = {
-                    'comment_id': comment.lastrowid,
-                    'descendant_id': descendant_id if descendant_id else 0,
-                    'entity_id': entity_id,
-                    'level': level
-                }
-
-                query = '''INSERT INTO comment_tree (ancestor_id, descendant_id, nearest_ancestor_id, entity_id, level)
-                            SELECT ancestor_id, {comment_id}, {descendant_id}, {entity_id}, {level}
-                                FROM comment_tree
-                                WHERE descendant_id = {descendant_id}
-                           UNION ALL SELECT {comment_id}, {comment_id}, {descendant_id}, {entity_id}, {level}'''
-                result = await conn.execute(query.format(**data))
-            except Exception as e:
-                await trans.rollback()
-                log.debug('Error on create comment_tree: {}'.format(e))
-                return
-            else:
-                await trans.commit()
-
-        if result:
-            return result.lastrowid

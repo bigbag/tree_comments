@@ -15,10 +15,48 @@ class CommentView:
     def __init__(self):
         pass
 
-    @staticmethod
-    def _get_descendant_id(data):
+    async def get_all(self, request):
+        """Returns information about comments"""
+
+        entity_id = request.GET.get('entity_id')
+        if not entity_id:
+            log.debug('Not found entity_id in request')
+            raise web.HTTPBadRequest()
+
         try:
-            return int(data.get('descendant_id'))
+            page = int(request.GET.get('page', 1))
+        except ValueError:
+            log.debug('Not valid format page')
+            raise web.HTTPBadRequest()
+
+        comments = await CommentTreeModel().get_all(
+            request.app['db'], entity_id, page)
+        if not comments:
+            log.debug('Not found comment for entity_id {}, on page {}'.format(
+                entity_id, page))
+            raise web.HTTPNotFound()
+
+        return web.Response(
+            body=json.dumps(comments).encode('utf-8'),
+            content_type='application/json')
+
+    async def get(self, request):
+        """Returns information about comment by comment_id"""
+
+        comment_id = request.match_info.get('comment_id')
+        comment = await CommentModel().get(request.app['db'], comment_id)
+        if not comment:
+            log.debug('Not found comment for comment_id {}'.format(comment_id))
+            raise web.HTTPNotFound()
+
+        return web.Response(
+            body=json.dumps(CommentModel.format_comment(comment)).encode('utf-8'),
+            content_type='application/json')
+
+    @staticmethod
+    def _get_ancestor_id(data):
+        try:
+            return int(data.get('ancestor_id'))
         except (TypeError, ValueError):
             return
 
@@ -51,7 +89,7 @@ class CommentView:
         return {
             'entity_id': entity_id,
             'user_id': user_id,
-            'descendant_id': self._get_descendant_id(data),
+            'ancestor_id': self._get_ancestor_id(data),
             'text': text
         }
 
@@ -87,9 +125,14 @@ class CommentView:
         raise web.HTTPBadRequest()
 
     async def delete(self, request):
-        comment_id = request.match_info.get('comment_id')
-        result = await CommentTreeModel().delete(request.app['db'], comment_id)
+        """Delete comment without descendants"""
 
+        comment_id = request.match_info.get('comment_id')
+        if await CommentTreeModel().has_descendant(request.app['db'], comment_id):
+            log.debug('DELETE: Comment {} has descendant'.format(comment_id))
+            raise web.HTTPBadRequest()
+
+        result = await CommentTreeModel().delete(request.app['db'], comment_id)
         if not result:
             raise web.HTTPBadRequest()
 
