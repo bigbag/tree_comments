@@ -31,7 +31,7 @@ class CommentView:
         comments = await CommentTreeModel().get_all_first(
             request.app['db'], entity_id, page)
         if not comments:
-            log.debug('Not found comment for entity_id {}, on page {}'.format(
+            log.debug('Not found comment for entity_id: {}, on page: {}'.format(
                 entity_id, page))
             raise web.HTTPNotFound()
 
@@ -46,7 +46,7 @@ class CommentView:
         comment = await CommentTreeModel().get(request.app['db'],
                                                comment_id=comment_id)
         if not comment:
-            log.debug('Not found comment for comment_id {}'.format(comment_id))
+            log.debug('Not found comment for comment_id: {}'.format(comment_id))
             raise web.HTTPNotFound()
 
         return web.Response(
@@ -94,11 +94,11 @@ class CommentView:
             raise web.HTTPBadRequest()
 
         if not await EntityModel().get(request.app['db'], entity_id):
-            log.debug('CREATE: Not found entity_id {}'.format(entity_id))
+            log.debug('CREATE: Not found entity_id: {}'.format(entity_id))
             raise web.HTTPBadRequest()
 
         if not await UserModel().get(request.app['db'], user_id):
-            log.debug('CREATE: Not found user_id {}'.format(user_id))
+            log.debug('CREATE: Not found user_id: {}'.format(user_id))
             raise web.HTTPBadRequest()
 
         ancestor_id = None
@@ -142,7 +142,7 @@ class CommentView:
         if result:
             return web.HTTPOk()
 
-        log.debug('UPDATE: Not found comment with comment_id {}'.format(comment_id))
+        log.debug('UPDATE: Not found comment with comment_id: {}'.format(comment_id))
         raise web.HTTPBadRequest()
 
     async def delete(self, request):
@@ -150,7 +150,7 @@ class CommentView:
 
         comment_id = request.match_info.get('comment_id')
         if await CommentTreeModel().has_descendant(request.app['db'], comment_id):
-            log.debug('DELETE: Comment {} has descendant'.format(comment_id))
+            log.debug('DELETE: Comment with comment_id: {} has descendant'.format(comment_id))
             raise web.HTTPBadRequest()
 
         result = await CommentTreeModel().delete(request.app['db'], comment_id)

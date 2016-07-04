@@ -30,7 +30,7 @@ class EntityView:
         entity_id = request.match_info.get('entity_id')
         entity = await EntityModel().get(request.app['db'], entity_id)
         if not entity:
-            log.debug('Not found entity for entity_id {}'.format(entity_id))
+            log.debug('Not found entity for entity_id: {}'.format(entity_id))
             raise web.HTTPNotFound()
 
         return web.Response(
@@ -67,7 +67,7 @@ class EntityView:
         result = await EntityModel().delete(request.app['db'], entity_id)
 
         if not result:
-            log.debug('Not found entity for entity_id {}'.format(entity_id))
+            log.debug('Not found entity for entity_id: {}'.format(entity_id))
             raise web.HTTPNotFound()
 
         return web.HTTPOk()
