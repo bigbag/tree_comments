@@ -47,7 +47,7 @@ class UserModel(object):
             query = self.table.select(self.table.c.id == user_id)
             result = await(await conn.execute(query)).first()
             if result:
-                return self._format_user(result)
+                return dict((key, value) for key, value in result.items())
 
         return user
 

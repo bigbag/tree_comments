@@ -1,10 +1,11 @@
 """Class with user actions"""
 
 import logging as log
-from aiohttp import web
+from aiohttp import MultiDict, web
 
 from helpers import json
 from models.user import UserModel
+from models.comment import UserCommentsGenerator
 
 
 class UserView:
@@ -30,7 +31,7 @@ class UserView:
         user_id = request.match_info.get('user_id')
         user = await UserModel().get(request.app['db'], user_id)
         if not user:
-            log.debug('Not found user for user_id {}'.format(user_id))
+            log.debug('Not found user for user_id: {}'.format(user_id))
             raise web.HTTPNotFound()
 
         return web.Response(
@@ -48,7 +49,7 @@ class UserView:
 
         user_id = await UserModel().create(request.app['db'], user_name)
         if not user_id:
-            log.debug('Not unique user name {}'.format(user_name))
+            log.debug('Not unique user name: {}'.format(user_name))
             raise web.HTTPBadRequest()
 
         url = request.app.router['user_details'].url(parts={'user_id': user_id})
@@ -63,7 +64,23 @@ class UserView:
         result = await UserModel().delete(request.app['db'], user_id)
 
         if not result:
-            log.debug('Not found user for user_id {}'.format(user_id))
+            log.debug('Not found user for user_id: {}'.format(user_id))
             raise web.HTTPNotFound()
 
         return web.HTTPOk()
+
+    async def get_comments(self, request):
+        """Returns information about user comments by user_id"""
+
+        user_id = request.match_info.get('user_id')
+        headers = {
+            'Content-Disposition': 'attachment; filename="comments_{}"'.format(user_id),
+        }
+        resp = web.StreamResponse(headers=MultiDict(headers))
+        resp.content_type = 'text/plain'
+        await resp.prepare(request)
+        comments = UserCommentsGenerator(db=request.app['db'], user_id=user_id)
+        async for i in comments:
+            resp.write(i)
+        await resp.write_eof()
+        return resp

@@ -13,6 +13,7 @@ routes = [
     ('GET', '/user/{user_id}', user_view.get, 'user_details'),
     ('POST', '/user/', user_view.create, 'user_create'),
     ('DELETE', '/user/{user_id}', user_view.delete, 'user_delete'),
+    ('GET', '/user/{user_id}/comments/', user_view.get_comments, 'user_comments'),
 
     ('GET', '/entity/', entity_view.get_all, 'entity_list'),
     ('GET', '/entity/{entity_id}', entity_view.get, 'entity_details'),

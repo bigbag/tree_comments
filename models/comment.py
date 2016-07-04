@@ -1,5 +1,6 @@
 """Class with comment data model"""
 
+import jxmlease
 import logging as log
 import sqlalchemy as sa
 
@@ -270,3 +271,66 @@ class CommentTreeModel(object):
 
         if result:
             return result.rowcount
+
+    async def get_by_user_id(self, engine, user_id, start=None, chunk_size=None):
+        """Request for getting information user comments"""
+
+        j = sa.join(CommentModel.table, self.table,
+                    CommentModel.table.c.comment_id == self.table.c.descendant_id)
+        query = sa.select([self.table, CommentModel.table]).select_from(j)
+        query = query.where(CommentModel.table.c.user_id == user_id)
+
+        if start and chunk_size:
+            query = query.where(CommentModel.table.c.comment_id > start).\
+                limit(self.RECORD_ON_PAGE)
+
+        comments = []
+        last_comment_id = 0
+        async with engine.acquire() as conn:
+            async for row in conn.execute(query):
+                last_comment_id = row.comment_id
+                comments.append(dict((key, value) for key, value in row.items()))
+
+        return comments, last_comment_id
+
+
+class UserCommentsGenerator:
+    CHUNK_SIZE = 10000
+
+    FORMAT_XML = 'xml'
+
+    def __init__(self, db, user_id, comment_format='xml'):
+        self.db = db
+        self.user_id = user_id
+        self.start = 0
+        self.comment_format = comment_format
+
+    async def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        start = self.start
+        comments, last_comment_id = await CommentTreeModel().get_by_user_id(
+            engine=self.db,
+            user_id=self.user_id,
+            start=start,
+            chunk_size=self.CHUNK_SIZE
+        )
+        if comments:
+            self.start = last_comment_id
+
+            return self._format(comments).encode('utf8')
+        else:
+            raise StopAsyncIteration
+
+    def _format(self, comments):
+        if self.comment_format == self.FORMAT_XML:
+            return self._get_xml(comments)
+
+    def _get_xml(self, comments):
+        """Format comments list to xml format"""
+
+        result = ""
+        for comment in comments:
+            result += "<comment>\n" + jxmlease.emit_xml(comment) + "\n</comment>\n"
+        return result
