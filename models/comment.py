@@ -129,7 +129,7 @@ class CommentTreeModel(object):
         if comment_id:
             ancestor = await self.get_ancestor(engine, comment_id)
             if entity_id and entity_id != ancestor.entity_id:
-                return []
+                return
 
             if not entity_id:
                 entity_id = ancestor.entity_id
@@ -145,7 +145,11 @@ class CommentTreeModel(object):
         """Format information about all descendants"""
 
         result = []
-        async for row in await self.get_raw_tree(engine, entity_id, comment_id):
+        tree_raw = await self.get_raw_tree(engine, entity_id, comment_id)
+        if not tree_raw:
+            return result
+
+        async for row in tree_raw:
             result.append(dict((key, value) for key, value in row.items()))
         return result
 
