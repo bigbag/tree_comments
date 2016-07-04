@@ -29,19 +29,13 @@ class UserModel(object):
 
         return is_valid
 
-    def _format_user(self, user):
-        return {
-            'id': user.id,
-            'name': user.name,
-        }
-
     async def get_all(self, engine):
         """Request information about all users"""
 
         users = []
         async with engine.acquire() as conn:
             async for row in conn.execute(self.table.select()):
-                users.append(self._format_user(row))
+                users.append(dict((key, value) for key, value in row.items()))
 
         return users
 

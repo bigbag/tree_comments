@@ -1,10 +1,9 @@
 """Class with entity actions"""
 
-import json
 import logging as log
-
 from aiohttp import web
 
+from helpers import json
 from models.entity import EntityModel
 
 

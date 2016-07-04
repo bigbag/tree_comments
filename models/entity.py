@@ -36,20 +36,13 @@ class EntityModel(object):
 
         return is_valid
 
-    def _format_entity(self, entity):
-        return {
-            'id': entity.id,
-            'name': entity.name,
-            'type': entity.type
-        }
-
     async def get_all(self, engine):
         """Request information about all entities"""
 
         entities = []
         async with engine.acquire() as conn:
             async for row in conn.execute(self.table.select()):
-                entities.append(self._format_entity(row))
+                entities.append(dict((key, value) for key, value in row.items()))
 
         return entities
 
