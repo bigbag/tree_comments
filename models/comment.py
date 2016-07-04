@@ -22,20 +22,6 @@ class CommentModel(object):
         sa.Column('date_update', sa.TIMESTAMP(), onupdate=sa.func.utc_timestamp()),
     )
 
-    @staticmethod
-    def format_date(date):
-        return '' if not date else date.isoformat()
-
-    @staticmethod
-    def format_comment(comment):
-        return {
-            'comment_id': comment.comment_id,
-            'user_id': comment.user_id,
-            'date_create': CommentModel.format_date(comment.date_create),
-            'date_update': CommentModel.format_date(comment.date_update),
-            'text': comment.text,
-        }
-
     async def get(self, engine, comment_id):
         """Request information about comment by comment_id"""
 
@@ -120,7 +106,37 @@ class CommentTreeModel(object):
         sa.Column('entity_id', sa.Integer(), sa.ForeignKey("entity.id"), nullable=False),
     )
 
-    async def get_all(self, engine, entity_id, page):
+    async def get_raw_tree(self, engine, entity_id=None, comment_id=None):
+        """Request information about all descendants"""
+
+        j = sa.join(self.table, CommentModel.table,
+                    self.table.c.descendant_id == CommentModel.table.c.comment_id)
+        query = sa.select([self.table, CommentModel.table]).select_from(j)
+
+        if comment_id:
+            ancestor = await self.get_ancestor(engine, comment_id)
+            if entity_id and entity_id != ancestor.entity_id:
+                return []
+
+            if not entity_id:
+                entity_id = ancestor.entity_id
+            query = query.where(self.table.c.ancestor_id == comment_id)
+
+        if entity_id:
+            query = query.where(self.table.c.entity_id == entity_id)
+
+        async with engine.acquire() as conn:
+            return await conn.execute(query)
+
+    async def get_tree(self, engine, entity_id=None, comment_id=None):
+        """Format information about all descendants"""
+
+        result = []
+        async for row in await self.get_raw_tree(engine, entity_id, comment_id):
+            result.append(dict((key, value) for key, value in row.items()))
+        return result
+
+    async def get_all_first(self, engine, entity_id, page):
         """Request information about comments first level"""
 
         comments = []
@@ -129,6 +145,7 @@ class CommentTreeModel(object):
 
         j = sa.join(self.table, CommentModel.table,
                     self.table.c.ancestor_id == CommentModel.table.c.comment_id)
+
         query = sa.select([CommentModel.table]).select_from(j).\
             where(self.table.c.entity_id == entity_id).\
             where(self.table.c.level == 0).\
@@ -137,45 +154,53 @@ class CommentTreeModel(object):
 
         async with engine.acquire() as conn:
             async for row in conn.execute(query):
-                comments.append(CommentModel.format_comment(row))
+                data = dict((key, value) for key, value in row.items())
+                data['entity_id'] = int(entity_id)
+                comments.append(data)
 
         return comments
 
-    async def get_once(self, engine, comment_id):
-        """Request for getting information about comment_tree for once comment"""
+    async def get_ancestor(self, engine, comment_id):
+        """Request for getting information about ancestor"""
 
         async with engine.acquire() as conn:
             query = self.table.select().\
                 where(self.table.c.ancestor_id == self.table.c.descendant_id).\
-                where(self.table.c.ancestor_id == comment_id)
+                where(self.table.c.descendant_id == comment_id)
             return await(await conn.execute(query)).first()
 
     async def has_descendant(self, engine, comment_id):
         """Request to check for descendants"""
 
+        result = False
         async with engine.acquire() as conn:
             query = self.table.select().\
                 where(self.table.c.ancestor_id != self.table.c.descendant_id).\
                 where(self.table.c.ancestor_id == comment_id)
-            return await(await conn.execute(query)).first()
+            comment = await(await conn.execute(query)).first()
+            if comment:
+                result = True
+
+        return result
 
     async def create(self, engine, user_id, entity_id, text, ancestor_id=None):
         """Request to create comment"""
 
         result = None
         ancestor = None
-        if ancestor_id:
-            ancestor = await self.get_once(engine, ancestor_id)
-            if not ancestor:
-                log.debug('Not found ancestor for id: {}'.format(ancestor_id))
-                return result
-
-            if ancestor.entity_id != entity_id:
-                log.debug('Not equal request entity_id and ancestor entity_id')
-                return result
-
         async with engine.acquire() as conn:
             trans = await conn.begin()
+
+            if ancestor_id:
+                ancestor = await self.get_ancestor(engine, ancestor_id)
+                if not ancestor:
+                    log.debug('Not found ancestor for id: {}'.format(ancestor_id))
+                    return result
+
+                if ancestor.entity_id != entity_id:
+                    log.debug('Not equal request entity_id and ancestor entity_id')
+                    return result
+
             try:
                 new_comment = await conn.execute(CommentModel.table.insert().values(
                     {'user_id': user_id, 'text': text}

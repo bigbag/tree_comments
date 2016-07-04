@@ -1,10 +1,9 @@
 """Class with comment actions"""
 
-import json
 import logging as log
-
 from aiohttp import web
 
+from helpers import json
 from models.comment import CommentTreeModel, CommentModel
 from models.entity import EntityModel
 from models.user import UserModel
@@ -29,7 +28,7 @@ class CommentView:
             log.debug('Not valid format page')
             raise web.HTTPBadRequest()
 
-        comments = await CommentTreeModel().get_all(
+        comments = await CommentTreeModel().get_all_first(
             request.app['db'], entity_id, page)
         if not comments:
             log.debug('Not found comment for entity_id {}, on page {}'.format(
@@ -44,13 +43,14 @@ class CommentView:
         """Returns information about comment by comment_id"""
 
         comment_id = request.match_info.get('comment_id')
-        comment = await CommentModel().get(request.app['db'], comment_id)
+        comment = await CommentTreeModel().get_tree(request.app['db'],
+                                                    comment_id=comment_id)
         if not comment:
             log.debug('Not found comment for comment_id {}'.format(comment_id))
             raise web.HTTPNotFound()
 
         return web.Response(
-            body=json.dumps(CommentModel.format_comment(comment)).encode('utf-8'),
+            body=json.dumps(comment).encode('utf-8'),
             content_type='application/json')
 
     async def _create_request_validation(self, request):
