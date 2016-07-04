@@ -39,6 +39,10 @@ def setup_loggers(logs_settings, logs_enabled, logs_level, logs_dir,
         'aiohttp.web': {
             'level': logs_level,
             'handlers': ['console', 'file']
+        },
+        'aiohttp.server': {
+            'level': logs_level,
+            'handlers': ['console', 'file']
         }
     }
     logging.config.dictConfig(logs_settings)
