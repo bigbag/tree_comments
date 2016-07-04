@@ -20,6 +20,7 @@ routes = [
     ('DELETE', '/entity/{entity_id}', entity_view.delete, 'entity_delete'),
 
     ('GET', '/comment/', comment_view.get_all, 'comment_list'),
+    ('GET', '/comment/search/', comment_view.search, 'comment_search'),
     ('GET', '/comment/{comment_id}', comment_view.get, 'comment_details'),
     ('POST', '/comment/', comment_view.create, 'comment_create'),
     ('PUT', '/comment/{comment_id}', comment_view.update, 'comment_update'),

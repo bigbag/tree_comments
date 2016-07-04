@@ -106,6 +106,19 @@ class CommentTreeModel(object):
         sa.Column('entity_id', sa.Integer(), sa.ForeignKey("entity.id"), nullable=False),
     )
 
+    async def get(self, engine, comment_id):
+        """Request information about comment by comment_id"""
+
+        j = sa.join(self.table, CommentModel.table,
+                    self.table.c.descendant_id == CommentModel.table.c.comment_id)
+        query = sa.select([self.table, CommentModel.table]).select_from(j)
+        query = query.where(self.table.c.ancestor_id == comment_id).\
+            where(self.table.c.ancestor_id == self.table.c.descendant_id)
+
+        async with engine.acquire() as conn:
+            comment = await(await conn.execute(query)).first()
+            return dict((key, value) for key, value in comment.items())
+
     async def get_raw_tree(self, engine, entity_id=None, comment_id=None):
         """Request information about all descendants"""
 

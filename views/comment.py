@@ -43,10 +43,32 @@ class CommentView:
         """Returns information about comment by comment_id"""
 
         comment_id = request.match_info.get('comment_id')
-        comment = await CommentTreeModel().get_tree(request.app['db'],
-                                                    comment_id=comment_id)
+        comment = await CommentTreeModel().get(request.app['db'],
+                                               comment_id=comment_id)
         if not comment:
             log.debug('Not found comment for comment_id {}'.format(comment_id))
+            raise web.HTTPNotFound()
+
+        return web.Response(
+            body=json.dumps(comment).encode('utf-8'),
+            content_type='application/json')
+
+    async def search(self, request):
+        """Returns information about coments node by comment_id or entity_id"""
+
+        entity_id = request.GET.get('entity_id')
+        comment_id = request.GET.get('comment_id')
+        try:
+            entity_id = int(entity_id) if entity_id else None
+            comment_id = int(comment_id) if comment_id else None
+        except ValueError:
+            log.debug('CREATE: Not valid format entity_id or comment_id')
+            pass
+
+        comment = await CommentTreeModel().get_tree(
+            request.app['db'], entity_id=entity_id, comment_id=comment_id)
+        if not comment:
+            log.debug('Not found comments node')
             raise web.HTTPNotFound()
 
         return web.Response(
